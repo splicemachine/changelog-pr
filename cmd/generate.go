@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver/v4"
-	log "github.com/maahsome/changelog-pr/common"
+	"github.com/maahsome/changelog-pr/common"
 	"github.com/maahsome/changelog-pr/provider"
 	"github.com/spf13/cobra"
 )
@@ -24,24 +24,26 @@ var generateCmd = &cobra.Command{
 		releaseTag, _ := cmd.Flags().GetString("release-tag")
 		changelogFile, _ := cmd.Flags().GetString("file")
 
-		if !strings.HasPrefix(sinceTag, "v") {
-			log.Logger.Fatal("Please provide TAGs in format 'vMAJOR.MINOR.PATCH'")
+		if len(sinceTag) > 0 && !strings.HasPrefix(sinceTag, "v") {
+			common.Logger.Fatal("Please provide TAGs in format 'vMAJOR.MINOR.PATCH'")
 		}
 		if !strings.HasPrefix(releaseTag, "v") {
-			log.Logger.Fatal("Please provide TAGs in format 'vMAJOR.MINOR.PATCH'")
+			common.Logger.Fatal("Please provide TAGs in format 'vMAJOR.MINOR.PATCH'")
 		}
-		_, sterr := semver.Parse(strings.Replace(sinceTag, "v", "", 1))
-		if sterr != nil {
-			log.Logger.Fatal(fmt.Sprintf("Error parsing SemVer for %s", sinceTag))
+		if len(sinceTag) > 0 {
+			_, sterr := semver.Parse(strings.Replace(sinceTag, "v", "", 1))
+			if sterr != nil {
+				common.Logger.Fatal(fmt.Sprintf("Error parsing SemVer for %s", sinceTag))
+			}
 		}
 		_, rterr := semver.Parse(strings.Replace(releaseTag, "v", "", 1))
 		if rterr != nil {
-			log.Logger.Fatal(fmt.Sprintf("Error parsing SemVer for %s", releaseTag))
+			common.Logger.Fatal(fmt.Sprintf("Error parsing SemVer for %s", releaseTag))
 		}
 
 		glog, err := generateLog(srcPath, sinceTag, releaseTag, changelogFile)
 		if err != nil {
-			log.Logger.WithError(err).Error("Error generating the changelog")
+			common.Logger.WithError(err).Error("Error generating the changelog")
 		}
 
 		fmt.Println(glog)
@@ -85,6 +87,6 @@ func init() {
 	generateCmd.Flags().StringP("release-tag", "r", "", "Specify the new release TAG")
 	generateCmd.Flags().StringP("file", "f", "", "Specify an output file to save the changelog to")
 	generateCmd.MarkFlagRequired("path")
-	generateCmd.MarkFlagRequired("since-tag")
+	// generateCmd.MarkFlagRequired("since-tag")
 	generateCmd.MarkFlagRequired("release-tag")
 }

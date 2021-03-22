@@ -1,0 +1,22 @@
+# RELEASE Process
+
+- export RELEASE_VERSION={newSemVer}
+  - where {newSemVer} is in the form of `v0.1.0`
+  - `export RELEASE_VERSION=v0.0.0`
+- Create a new branch for release.
+  - `git checkout -b RELEASE_${RELEASE_VERSION}`
+- Create the changelog file `changelog/${RELEASE_VERSION}.md`
+  - `go build` (# from the source root)
+  - `./changelog-pr generate -p . -r "${RELEASE_VERSION}"`
+    - Inspect the output from the above command, then run with the `--file` parameter
+  - `./changelog-pr generate -p . -r "${RELEASE_VERSION}"` -f ./changelog/${RELEASE_VERSION}.md
+- Review changelogs/releases/${RELEASE_VERSION}.md
+- Create and Merge PR
+  - `git add -A; git commit -m "RELEASE of ${RELEASE_VERSION}"; git push origin RELEASE_${RELEASE_VERSION}`
+- Pull main
+  - `git checkout main; git fetch; git pull`
+- Perform the release
+  - `git tag ${RELEASE_VERSION}`
+  - `git push origin ${RELEASE_VERSION}`
+- Check to see if Release GitHub Action kicks off
+- Check maahsome/changelog-pr Releases Page, and maahsome/homebrew-tap/Formula/changelog-pr.rb

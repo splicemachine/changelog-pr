@@ -62,6 +62,7 @@ func ParseMarkdown(body string, pr string, cl *Changelog) error {
 	} else {
 		splits = strings.Split(body, "\n")
 	}
+	Logger.Debug(fmt.Sprintf("Body: %s", body))
 	for _, v := range splits {
 		Logger.Debug(fmt.Sprintf("%s\n", v))
 		if strings.HasPrefix(strings.TrimSpace(v), "#") {

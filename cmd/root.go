@@ -16,6 +16,10 @@ var (
 	cfgFile     string
 	gitProvider string
 	ghToken     string
+	semVer      string
+	gitCommit   string
+	buildDate   string
+	gitRef      string
 )
 
 // rootCmd represents the base command when called without any subcommands

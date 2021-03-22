@@ -8,7 +8,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/blang/semver/v4"
 	"github.com/go-git/go-git/v5"
+
 	// . "github.com/go-git/go-git/v5/_examples"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
@@ -40,8 +42,37 @@ func parsePRNumber(msg string) (uint, error) {
 	return uint(u64), nil
 }
 
+func getUserRepository(url string) (string, string, error) {
+	// git@github.com:Maahsome/changelog-pr.git
+	// https://github.com/Maahsome/changelog-pr.git
+
+	var matches [][]string
+
+	if strings.Contains(url, "git@") {
+		var gitRegex = regexp.MustCompile(`:(.+)\/(.+).git`)
+		matches = gitRegex.FindAllStringSubmatch(url, -1)
+		if len(matches) == 0 || len(matches[0]) == 0 || len(matches[0][1]) == 0 || len(matches[0][2]) == 0 {
+			return "", "", errors.New("failed to extract git user/repository")
+		}
+	}
+	if strings.Contains(url, "https://") {
+		var httpsRegex = regexp.MustCompile(`\.com\/(.+)\/(.+).git`)
+		matches = httpsRegex.FindAllStringSubmatch(url, -1)
+		if len(matches) == 0 || len(matches[0]) == 0 || len(matches[0][1]) == 0 || len(matches[0][2]) == 0 {
+			return "", "", errors.New("failed to extract git user/repository")
+		}
+	}
+
+	return matches[0][1], matches[0][2], nil
+}
+
 // GetChangeLogSincePR - Get the changelog details from the PR description
 func (p *Github) GetChangeLogFromPR(src string, sincePR string, release string, auth AuthToken, fileName string) (string, error) {
+
+	var (
+		resp    *resty.Response
+		resperr error
+	)
 	path := src
 
 	r, err := git.PlainOpen(path)
@@ -49,21 +80,67 @@ func (p *Github) GetChangeLogFromPR(src string, sincePR string, release string, 
 		return "", errors.New("failed generation of changelog")
 	}
 
+	c, cerr := r.Config()
+	if cerr != nil {
+		return "", errors.New("failed generation of changelog")
+	}
+	common.Logger.Debug(fmt.Sprintf("Remote URL: %s", c.Remotes["origin"].URLs[0]))
+	user, repo, rerr := getUserRepository(c.Remotes["origin"].URLs[0])
+	if rerr != nil {
+		return "", errors.New("failed generation of changelog")
+	}
+	common.Logger.Info(fmt.Sprintf("User: %s, Repo: %s\n", user, repo))
+
 	tagrefs, err := r.Tags()
 	if err != nil {
 		return "", errors.New("failed generation of changelog")
 	}
 
 	err = tagrefs.ForEach(func(t *plumbing.Reference) error {
-		if strings.HasSuffix(t.Name().String(), sincePR) {
-			common.Logger.Info(t.Hash())
-			lastTag = t
+		common.Logger.Info(fmt.Sprintf("Tag Name: %s", t.Name().String()))
+		var (
+			nv semver.Version
+			lv semver.Version
+		)
+
+		if len(sincePR) > 0 {
+			if strings.HasSuffix(t.Name().String(), sincePR) {
+				common.Logger.Info(t.Hash())
+				lastTag = t
+			}
+		} else {
+			//refs/tags/v0.1.0
+			var refRegex = regexp.MustCompile(`\/tags\/v(.+)`)
+			newMatches := refRegex.FindAllStringSubmatch(t.Name().String(), -1)
+			if len(newMatches) > 0 && len(newMatches[0]) > 0 && len(newMatches[0][1]) > 0 {
+				nv, err = semver.Parse(newMatches[0][1])
+				if err != nil {
+					common.Logger.Error(fmt.Sprintf("Error parsing SemVer for %s", newMatches[0][1]))
+					return nil
+				}
+			}
+			if lastTag != nil {
+				lastMatches := refRegex.FindAllStringSubmatch(lastTag.Name().String(), -1)
+				if len(lastMatches) > 0 && len(lastMatches[0]) > 0 && len(lastMatches[0][1]) > 0 {
+					lv, err = semver.Parse(lastMatches[0][1])
+					if err != nil {
+						common.Logger.Error(fmt.Sprintf("Error parsing SemVer for %s", lastMatches[0][1]))
+						return nil
+					}
+					if nv.GTE(lv) {
+						lastTag = t
+					}
+				}
+			} else {
+				lastTag = t
+			}
 		}
 		return nil
 	})
 	if err != nil {
 		return "", errors.New("failed generation of changelog")
 	}
+	common.Logger.Info(fmt.Sprintf("Last Tag/Hash: %s (%s)", lastTag.Name().String(), lastTag.Hash()))
 
 	// Gets the HEAD history from HEAD, just like this command:
 	// ... retrieves the branch pointed by HEAD
@@ -102,19 +179,24 @@ func (p *Github) GetChangeLogFromPR(src string, sincePR string, release string, 
 	}
 
 	// curl -sH "Accept: application/vnd.github.v3+json" https://api.github.com/repos/splicemachine/splicectl/pulls/5 | jq -r '.body'
-	// Figure out how to AUTHENTICATE for PRIVATE REPOS
 	restClient := resty.New()
 
 	changeLog := common.Changelog{}
 	changeLog.Version = release
 
 	for _, p := range PRs {
-		uri := fmt.Sprintf("https://api.github.com/repos/splicemachine/splicectl/pulls/%s", p)
-		resp, resperr := restClient.R().
-			SetHeader("Accept", "application/vnd.github.v3+json").
-			SetHeader("Authorization", fmt.Sprintf("token %s", auth.GithubToken)).
-			Get(uri)
-
+		uri := fmt.Sprintf("https://api.github.com/repos/%s/%s/pulls/%s", user, repo, p)
+		common.Logger.Debug(fmt.Sprintf("PR URI: %s", uri))
+		if len(auth.GithubToken) > 0 {
+			resp, resperr = restClient.R().
+				SetHeader("Accept", "application/vnd.github.v3+json").
+				SetHeader("Authorization", fmt.Sprintf("token %s", auth.GithubToken)).
+				Get(uri)
+		} else {
+			resp, resperr = restClient.R().
+				SetHeader("Accept", "application/vnd.github.v3+json").
+				Get(uri)
+		}
 		if resperr != nil {
 			common.Logger.WithError(resperr).Error("Error getting PR")
 		}
