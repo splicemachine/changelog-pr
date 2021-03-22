@@ -27,7 +27,12 @@ var rootCmd = &cobra.Command{
 	Use:   "changelog-pr",
 	Short: "Generate a changelog from PR descriptions",
 	Long: `Given a previous git TAG, locate all of the PRs since that TAG, and parse the
-	description of the PR for specific MD sections and build a changelog from the data.`,
+	description of the PR for specific MD sections and build a changelog from the data.
+
+	Currently there is only support for GitHub repositories, though adding different git
+	providers should be fairly straight forward.
+
+	Use the 'changelog-pr template' command to display the PR TEMPLATE data`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		logFile, _ := cmd.Flags().GetString("log-file")
 		logLevel, _ := cmd.Flags().GetString("log-level")

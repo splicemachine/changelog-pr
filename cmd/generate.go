@@ -16,7 +16,30 @@ var generateCmd = &cobra.Command{
 	Use:   "generate",
 	Short: "Generate a Changelog from PR descriptions since a specified TAG",
 	Long: `EXAMPLE:
-	#> changelog-pr generate --path <path/to/git/src> --since-tag v0.1.0 --release-tag v0.2.0
+	In this example we will look at all PRs that have been merged since the repository
+	was tagged with 'v0.1.0'
+
+	  %> changelog-pr generate --path <path/to/git/src> --since-tag v0.1.0 --release-tag v0.2.0
+
+EXAMPLE:
+	In this example the very last semver based TAG will be used as the '--since-tag'
+
+	  %> changelog-pr generate --path . --release-tag v0.2.1
+
+EXAMPLE:
+	In this example we will create a <SEMVER>.md changelog file.  If the release file already exists,
+	data will be appended to the already existing file, allowing one to update a master changelog.md
+	file
+
+	  %> RELEASE_VERSION="v0.2.1"
+	  %> changelog-pr generate --path . --release-tag ${RELEASE_VERSION} --file changelog/${RELEASE_VERSION.md}
+
+EXAMPLE:
+	In this example, the repository is private and requires a Personal Access Token to access the PR information.
+
+	  %> # fetch your personal access token from whereever you store your secrets
+	  %> GIT_PAT=$(security find-generic-password -l "git_pat" -w scripting.keychain-db)
+	  %> changelog-pr generate --path . --release-tag "v0.2.3" --gh-token ${GIT_PAT}
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
 		srcPath, _ := cmd.Flags().GetString("path")

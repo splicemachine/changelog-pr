@@ -8,7 +8,7 @@ import (
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Express the 'version' of splicectl.",
+	Short: "Express the 'version' of changelog-pr.",
 	Run: func(cmd *cobra.Command, args []string) {
 
 		fmt.Printf("\nSemVer: %s, BuildDate: %s\nCommitID: %s, GitRef: %s\n", semVer, buildDate, gitCommit, gitRef)
