@@ -8,7 +8,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/blang/semver/v4"
 	"github.com/go-git/go-git/v5"
+
 	// . "github.com/go-git/go-git/v5/_examples"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
@@ -95,15 +97,50 @@ func (p *Github) GetChangeLogFromPR(src string, sincePR string, release string, 
 	}
 
 	err = tagrefs.ForEach(func(t *plumbing.Reference) error {
-		if strings.HasSuffix(t.Name().String(), sincePR) {
-			common.Logger.Info(t.Hash())
-			lastTag = t
+		common.Logger.Info(fmt.Sprintf("Tag Name: %s", t.Name().String()))
+		var (
+			nv semver.Version
+			lv semver.Version
+		)
+
+		if len(sincePR) > 0 {
+			if strings.HasSuffix(t.Name().String(), sincePR) {
+				common.Logger.Info(t.Hash())
+				lastTag = t
+			}
+		} else {
+			//refs/tags/v0.1.0
+			var refRegex = regexp.MustCompile(`\/tags\/v(.+)`)
+			newMatches := refRegex.FindAllStringSubmatch(t.Name().String(), -1)
+			if len(newMatches) > 0 && len(newMatches[0]) > 0 && len(newMatches[0][1]) > 0 {
+				nv, err = semver.Parse(newMatches[0][1])
+				if err != nil {
+					common.Logger.Error(fmt.Sprintf("Error parsing SemVer for %s", newMatches[0][1]))
+					return nil
+				}
+			}
+			if lastTag != nil {
+				lastMatches := refRegex.FindAllStringSubmatch(lastTag.Name().String(), -1)
+				if len(lastMatches) > 0 && len(lastMatches[0]) > 0 && len(lastMatches[0][1]) > 0 {
+					lv, err = semver.Parse(lastMatches[0][1])
+					if err != nil {
+						common.Logger.Error(fmt.Sprintf("Error parsing SemVer for %s", lastMatches[0][1]))
+						return nil
+					}
+					if nv.GTE(lv) {
+						lastTag = t
+					}
+				}
+			} else {
+				lastTag = t
+			}
 		}
 		return nil
 	})
 	if err != nil {
 		return "", errors.New("failed generation of changelog")
 	}
+	common.Logger.Info(fmt.Sprintf("Last Tag/Hash: %s (%s)", lastTag.Name().String(), lastTag.Hash()))
 
 	// Gets the HEAD history from HEAD, just like this command:
 	// ... retrieves the branch pointed by HEAD
