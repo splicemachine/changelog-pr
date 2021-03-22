@@ -25,10 +25,12 @@ If the pull request includes user-facing changes, please fill out the [Changelog
 ## Changelog Inclusions
 
 <!-- Text Entered in these section will appear as it is written, MD formatted -->
+<!-- Avoid using the # character as the first character on any line, a trim is -->
+<!-- performed on each line when checking for markdown section tags -->
 - base feature note
   - **BREAKING** note on base feature
   - Basically whatever formatting we have here, just plain-text
-       #> command example
+       %> command example
 - next feature
   - note on next feature
 <!-- If there is NO text in a section, no entries will be collected for that section -->
