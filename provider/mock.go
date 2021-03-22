@@ -117,6 +117,30 @@ This is the description
 
 ## Checklist
 `)
+	case "v0.0.3":
+		PRData = append(PRData, `## Description
+
+This is the description
+
+## Changelog Inclusions
+
+### Changes
+
+- Change 1
+- Change 2
+`)
+
+		PRData = append(PRData, `## Description
+
+This is the description
+
+## Changelog Inclusions
+
+### Changes
+
+- Change 3
+- Change 4
+`)
 	}
 
 	for k, v := range PRData {

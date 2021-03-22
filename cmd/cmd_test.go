@@ -19,6 +19,7 @@ var _ = Describe("Generate", func() {
 		err               error
 		markdown          string
 		markdownAdditions string
+		markdownNoClosure string
 	)
 
 	AfterSuite(func() {
@@ -127,6 +128,22 @@ var _ = Describe("Generate", func() {
 
 `
 
+		markdownNoClosure = `## v0.2.0
+
+### Changes
+
+#### [Pull Request #0](https://github.com/splicemachine/splicectl/pull/0)
+
+- Change 1
+- Change 2
+
+#### [Pull Request #1](https://github.com/splicemachine/splicectl/pull/1)
+
+- Change 3
+- Change 4
+
+`
+
 	})
 
 	Describe("New Changelog", func() {
@@ -165,6 +182,17 @@ var _ = Describe("Generate", func() {
 				Expect(err).To(Equal(nil))
 			}
 			Expect(string(fileData[:])).To(Equal(markdown))
+		})
+
+		It("create a new changelog, change section, no closure", func() {
+			auth := clprovider.AuthToken{
+				GithubToken: "abcdefghijklmnop",
+			}
+			out, err := mockGitRepo.GetChangeLogFromPR("", "v0.0.3", "v0.2.0", auth, "")
+			if err != nil {
+				Expect(err).To(Equal(nil))
+			}
+			Expect(out).To(Equal(markdownNoClosure))
 		})
 
 	})
