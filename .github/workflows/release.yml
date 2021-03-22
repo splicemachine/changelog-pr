@@ -30,4 +30,4 @@ jobs:
           args: release --rm-dist --release-notes=changelog/${{ env.RELEASE_TAG }}.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MAAHSOME_PAT: ${{ secrets.SPLICECI_PAT }}
+          MAAHSOME_PAT: ${{ secrets.MAAHSOME_PAT }}
