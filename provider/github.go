@@ -73,12 +73,17 @@ func (p *Github) GetChangeLogFromPR(src string, sincePR string, release string, 
 		resp    *resty.Response
 		resperr error
 	)
-	path := src
 
-	r, err := git.PlainOpen(path)
+	r, err := git.PlainOpen(src)
 	if err != nil {
 		return "", errors.New("failed generation of changelog")
 	}
+
+	head, rerr := r.Head()
+	if rerr != nil {
+		return "", errors.New("failed generation of changelog")
+	}
+	common.Logger.Info(fmt.Sprintf("HEAD: %s", head.Name().Short()))
 
 	c, cerr := r.Config()
 	if cerr != nil {
@@ -89,7 +94,7 @@ func (p *Github) GetChangeLogFromPR(src string, sincePR string, release string, 
 	if rerr != nil {
 		return "", errors.New("failed generation of changelog")
 	}
-	common.Logger.Info(fmt.Sprintf("User: %s, Repo: %s\n", user, repo))
+	common.Logger.Info(fmt.Sprintf("User/Org: %s, Repo: %s\n", user, repo))
 
 	tagrefs, err := r.Tags()
 	if err != nil {
@@ -97,7 +102,7 @@ func (p *Github) GetChangeLogFromPR(src string, sincePR string, release string, 
 	}
 
 	err = tagrefs.ForEach(func(t *plumbing.Reference) error {
-		common.Logger.Info(fmt.Sprintf("Tag Name: %s", t.Name().String()))
+		common.Logger.Debug(fmt.Sprintf("Tag Name: %s", t.Name().String()))
 		var (
 			nv semver.Version
 			lv semver.Version
@@ -105,7 +110,7 @@ func (p *Github) GetChangeLogFromPR(src string, sincePR string, release string, 
 
 		if len(sincePR) > 0 {
 			if strings.HasSuffix(t.Name().String(), sincePR) {
-				common.Logger.Info(t.Hash())
+				common.Logger.Debug(t.Hash())
 				lastTag = t
 			}
 		} else {
@@ -154,30 +159,47 @@ func (p *Github) GetChangeLogFromPR(src string, sincePR string, release string, 
 		return "", errors.New("failed generation of changelog")
 	}
 
-	findingHash := true
-	PRs := []string{}
+	hasHash := false
 	err = cIter.ForEach(func(c *object.Commit) error {
 		if c.Hash == lastTag.Hash() {
-			findingHash = false
-			return nil
-		}
-		if findingHash {
-			if strings.HasPrefix(c.Message, "Merge pull request #") {
-				pr, err := parsePRNumber(strings.Split(c.Message, "\n")[0])
-				if err != nil {
-					common.Logger.WithError(err).Error("Bad PR Parse")
-				}
-				PRs = append(PRs, fmt.Sprintf("%d", pr))
-				common.Logger.Info(fmt.Sprintf("%s %s\n", c.ID(), strings.Split(c.Message, "\n")[0]))
-			}
-			return nil
+			hasHash = true
 		}
 		return nil
 	})
 	if err != nil {
 		return "", errors.New("failed generation of changelog")
 	}
-
+	PRs := []string{}
+	if hasHash {
+		findingHash := true
+		cIter, err := r.Log(&git.LogOptions{From: ref.Hash(), Order: git.LogOrderCommitterTime})
+		if err != nil {
+			return "", errors.New("failed generation of changelog")
+		}
+		err = cIter.ForEach(func(c *object.Commit) error {
+			if c.Hash == lastTag.Hash() {
+				findingHash = false
+				return nil
+			}
+			if findingHash {
+				if strings.HasPrefix(c.Message, "Merge pull request #") {
+					pr, err := parsePRNumber(strings.Split(c.Message, "\n")[0])
+					if err != nil {
+						common.Logger.WithError(err).Error("Bad PR Parse")
+					}
+					PRs = append(PRs, fmt.Sprintf("%d", pr))
+					common.Logger.Info(fmt.Sprintf("%s %s\n", c.ID(), strings.Split(c.Message, "\n")[0]))
+				}
+				return nil
+			}
+			return nil
+		})
+		if err != nil {
+			return "", errors.New("failed generation of changelog")
+		}
+	} else {
+		common.Logger.Fatal(fmt.Sprintf("The TAG you specified was NOT in the currently selected BRANCH: %s", head.Name().Short()))
+	}
 	// curl -sH "Accept: application/vnd.github.v3+json" https://api.github.com/repos/splicemachine/splicectl/pulls/5 | jq -r '.body'
 	restClient := resty.New()
 
