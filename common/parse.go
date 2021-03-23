@@ -62,9 +62,10 @@ func ParseMarkdown(body string, pr string, cl *Changelog) error {
 	} else {
 		splits = strings.Split(body, "\n")
 	}
-	Logger.Debug(fmt.Sprintf("Body: %s", body))
+	Logger.Info(fmt.Sprintf("Searching PR#%s for Changelog Inclusions...", pr))
+	Logger.Trace(fmt.Sprintf("Body: %s", body))
 	for _, v := range splits {
-		Logger.Debug(fmt.Sprintf("%s\n", v))
+		Logger.Trace(fmt.Sprintf("%s\n", v))
 		if strings.HasPrefix(strings.TrimSpace(v), "#") {
 			// We are at a markdown section marker, if we have section text, we need to capture it
 			if len(sectionName) > 0 && len(sectionText) > 0 {
@@ -77,13 +78,13 @@ func ParseMarkdown(body string, pr string, cl *Changelog) error {
 				currentDepth = 2
 				depthNames[currentDepth] = strings.TrimSpace(v)
 				sectionName = strings.TrimSpace(v)
-				Logger.Info(sectionName)
+				Logger.Debug(sectionName)
 			}
 			if strings.HasPrefix(strings.TrimSpace(v), "### ") {
 				currentDepth = 3
 				depthNames[currentDepth] = strings.TrimSpace(v)
 				sectionName = fmt.Sprintf("%s.%s", depthNames[2], strings.TrimSpace(v))
-				Logger.Info(sectionName)
+				Logger.Debug(sectionName)
 			}
 		} else {
 			// We are not at a markdown section, collect the section text

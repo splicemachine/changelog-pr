@@ -47,12 +47,6 @@ EXAMPLE:
 		releaseTag, _ := cmd.Flags().GetString("release-tag")
 		changelogFile, _ := cmd.Flags().GetString("file")
 
-		if len(sinceTag) > 0 && !strings.HasPrefix(sinceTag, "v") {
-			common.Logger.Fatal("Please provide TAGs in format 'vMAJOR.MINOR.PATCH'")
-		}
-		if !strings.HasPrefix(releaseTag, "v") {
-			common.Logger.Fatal("Please provide TAGs in format 'vMAJOR.MINOR.PATCH'")
-		}
 		if len(sinceTag) > 0 {
 			_, sterr := semver.Parse(strings.Replace(sinceTag, "v", "", 1))
 			if sterr != nil {
