@@ -66,8 +66,8 @@ brews:
     # Git author used to commit to the repository.
     # Defaults are shown.
     commit_author:
-      name: {{ .Env.HOMEBREW_COMMIT_NAME }}
-      email: {{ .Env.HOMEBREW_COMMIT_EMAIL }}
+      name: "{{ .Env.HOMEBREW_COMMIT_NAME }}"
+      email: "{{ .Env.HOMEBREW_COMMIT_EMAIL }}"
 
     # Folder inside the repository to put the formula.
     # Default is the root folder.
